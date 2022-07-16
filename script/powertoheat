@@ -1,0 +1,103 @@
+let heating = false;
+let tempBoiler = 0;
+let tempPuffer = 0;
+let heatingCounter = 0;
+let currentSwitchesOn = 0;
+
+let mqttTopic = "tele/smartmeter/SENSOR";
+let mqttTopicBoilerTemp = "sensor/boilertemperatur_oben";
+let mqttTopicPufferTemp = "sensor/puffertemperatur_oben";
+
+
+function increasePhases() {
+  if(currentSwitchesOn < 3) {
+    print("turning on switch", currentSwitchesOn );
+    switchPhase(currentSwitchesOn , true);
+    currentSwitchesOn++;
+    heatingCounter = 0;
+  }
+}
+
+function decreasePhases() {
+  if(currentSwitchesOn >= 0) {
+    print("turning off switch", currentSwitchesOn );
+    currentSwitchesOn--;
+    switchPhase(currentSwitchesOn , false);
+  }
+}
+
+function stopHeating() {
+  print("stop heating...")
+  heating = false;
+  turnOff();
+}
+
+function maxTempReached() {
+  return tempBoiler >= 70 || tempPuffer >= 70
+}
+
+function minTempReached() {
+  return tempPuffer < 50 || tempBoiler < 50
+}
+
+function loop() {
+  if(maxTempReached())
+    stopHeating();
+  
+  //start heating when tempPuffer falls below 50°
+  if(minTempReached() && !maxTempReached() || heating)
+  	heating = true;
+  	if(heatingCounter === 3 && currentSwitchesOn !== 3)
+  		increasePhases();
+  		
+  	if(heatingCounter === -3 && currentSwitchesOn !== 0)
+  		decreasePhases();
+}
+
+function processMqtt(topic, message, callbackarg) {
+  let messageObject = JSON.parse(message);
+  print("received power from smartmeter. Current power: ", messageObject.SML.Power_curr);
+  if(messageObject.SML.Power_curr < -1500) {
+      if(heatingCounter < 3 && currentSwitchesOn !== 3)
+        heatingCounter++;
+  }
+
+  if(messageObject.SML.Power_curr > 300) {
+    if(heatingCounter > -3)
+      heatingCounter--;
+  }
+  
+  print("current heating counter: ", heatingCounter);
+  loop();
+}
+
+function processMqttBoilerTemp(topic, message, callbackarg) {
+  print("received boiler temp: ", message);
+  tempBoiler = JSON.parse(message);
+}
+
+function processMqttPufferTemp(topic, message, callbackarg) {
+  print("received puffer temp: ", message);
+  tempPuffer = JSON.parse(message);
+}
+
+function switchPhase(index, turnOn){
+  Shelly.call(
+    "Switch.Set",
+     { id:index, on:turnOn },
+     function(result) {
+     })
+}
+
+function turnOff() {
+  switchPhase(0, false);
+  switchPhase(1, false);
+  switchPhase(2, false);
+}
+
+turnOff();
+
+MQTT.subscribe(mqttTopic, processMqtt);
+MQTT.subscribe(mqttTopicBoilerTemp, processMqttBoilerTemp);
+MQTT.subscribe(mqttTopicPufferTemp, processMqttPufferTemp);
+
