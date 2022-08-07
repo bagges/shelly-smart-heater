@@ -3,6 +3,7 @@ let tempBoiler = 0;
 let tempPuffer = 0;
 let heatingCounter = 0;
 let currentSwitchesOn = 0;
+let smartMeterValueReceived = false;
 
 let mqttTopic = "tele/smartmeter/SENSOR";
 let mqttTopicBoilerTemp = "sensor/boilertemperatur_oben";
@@ -27,44 +28,60 @@ function decreasePhases() {
 }
 
 function stopHeating() {
-  print("stop heating...")
+  print("stop heating...");
   heating = false;
   turnOff();
 }
 
 function maxTempReached() {
-  return tempBoiler >= 70 || tempPuffer >= 70
+  if(tempBoiler >= 72 || tempPuffer >= 72) {
+    print("max temp reached");
+    return true;
+  }
+  return false;
 }
 
 function minTempReached() {
-  return tempPuffer < 50 || tempBoiler < 50
+  if(tempPuffer < 63 && tempBoiler <= 69) {
+    print("min temp reached");
+    return true;
+  }
+  return false;
 }
 
 function loop() {
-  if(maxTempReached())
+  if(maxTempReached()) {
     stopHeating();
+  }
   
-  //start heating when tempPuffer falls below 50°
-  if(minTempReached() && !maxTempReached() || heating)
-  	heating = true;
-  	if(heatingCounter === 3 && currentSwitchesOn !== 3)
-  		increasePhases();
-  		
-  	if(heatingCounter === -3 && currentSwitchesOn !== 0)
-  		decreasePhases();
+  print("heating: ", heating);
+  //start heating when tempPuffer falls below configured temp
+  if((minTempReached() && !maxTempReached()) || heating) {
+    heating = true;
+    if(heatingCounter === 3 && currentSwitchesOn !== 3) {
+      increasePhases();
+    }
+    if(heatingCounter === -3 && currentSwitchesOn !== 0) {
+      decreasePhases();
+    }
+  }
 }
 
 function processMqtt(topic, message, callbackarg) {
   let messageObject = JSON.parse(message);
   print("received power from smartmeter. Current power: ", messageObject.SML.Power_curr);
+  smartMeterValueReceived = true;
+
   if(messageObject.SML.Power_curr < -1500) {
-      if(heatingCounter < 3 && currentSwitchesOn !== 3)
-        heatingCounter++;
+    if(heatingCounter < 3 && currentSwitchesOn !== 3) {
+      heatingCounter++;
+    }
   }
 
-  if(messageObject.SML.Power_curr > 300) {
-    if(heatingCounter > -3)
+  if(messageObject.SML.Power_curr > -500) {
+    if(heatingCounter > -3) {
       heatingCounter--;
+    }
   }
   
   print("current heating counter: ", heatingCounter);
@@ -93,11 +110,26 @@ function turnOff() {
   switchPhase(0, false);
   switchPhase(1, false);
   switchPhase(2, false);
+  currentSwitchesOn = 0;
 }
 
-turnOff();
+function smartMeterHealthCheck(userdata){
+  if(smartMeterValueReceived) {
+    print("smartmeter healthy");
+    smartMeterValueReceived = false;
+  } else {
+    print("smartmeter unhealthy");
+    turnOffAndDie();
+
+  }
+}
+
+function turnOffAndDie(){
+    turnOff();
+    die("byebye");
+}
 
 MQTT.subscribe(mqttTopic, processMqtt);
 MQTT.subscribe(mqttTopicBoilerTemp, processMqttBoilerTemp);
 MQTT.subscribe(mqttTopicPufferTemp, processMqttPufferTemp);
-
+Timer.set(300000, true, smartMeterHealthCheck); //five minutes
