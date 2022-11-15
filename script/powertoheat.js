@@ -42,7 +42,7 @@ function maxTempReached() {
 }
 
 function minTempReached() {
-  if(tempPuffer < 63 && tempBoiler <= 69) {
+  if(tempPuffer < 63 && tempBoiler <= 68) {
     print("min temp reached");
     return true;
   }
@@ -78,7 +78,7 @@ function processMqtt(topic, message, callbackarg) {
     }
   }
 
-  if(messageObject.SML.Power_curr > -500) {
+  if(messageObject.SML.Power_curr > -400) {
     if(heatingCounter > -3) {
       heatingCounter--;
     }
