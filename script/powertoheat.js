@@ -1,6 +1,6 @@
 let heating = false;
-let tempBoiler = 0;
-let tempPuffer = 0;
+let tempBoiler = 72;
+let tempPuffer = 72;
 let heatingCounter = 0;
 let currentSwitchesOn = 0;
 let smartMeterValueReceived = false;
@@ -101,9 +101,7 @@ function processMqttPufferTemp(topic, message, callbackarg) {
 function switchPhase(index, turnOn){
   Shelly.call(
     "Switch.Set",
-     { id:index, on:turnOn },
-     function(result) {
-     })
+     { id:index, on:turnOn })
 }
 
 function turnOff() {
