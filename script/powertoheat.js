@@ -1,6 +1,7 @@
 let heating = false;
 let tempBoiler = 72;
 let tempPuffer = 72;
+let batteryOutput = 0;
 let heatingCounter = 0;
 let currentSwitchesOn = 0;
 let smartMeterValueReceived = false;
@@ -8,7 +9,7 @@ let smartMeterValueReceived = false;
 let mqttTopic = "tele/smartmeter/SENSOR";
 let mqttTopicBoilerTemp = "sensor/boilertemperatur_oben";
 let mqttTopicPufferTemp = "sensor/puffertemperatur_oben";
-
+let mqttTopicBatteryOutput = "sensor/battery_output_power";
 
 function increasePhases() {
   if(currentSwitchesOn < 3) {
@@ -72,13 +73,13 @@ function processMqtt(topic, message, callbackarg) {
   print("received power from smartmeter. Current power: ", messageObject.SML.Power_curr);
   smartMeterValueReceived = true;
 
-  if(messageObject.SML.Power_curr < -1500) {
+  if(messageObject.SML.Power_curr <= -1250 || batteryOutput <= -1250) {
     if(heatingCounter < 3 && currentSwitchesOn !== 3) {
       heatingCounter++;
     }
   }
 
-  if(messageObject.SML.Power_curr > -400) {
+  if(messageObject.SML.Power_curr >= 50 || batteryOutput >= 50) {
     if(heatingCounter > -3) {
       heatingCounter--;
     }
@@ -98,10 +99,17 @@ function processMqttPufferTemp(topic, message, callbackarg) {
   tempPuffer = JSON.parse(message);
 }
 
+function processMqttBatteryOutput(topic, message, callbackarg) {
+  print("received battery output: ", message);
+  batteryOutput = JSON.parse(message);
+}
+
+
+
 function switchPhase(index, turnOn){
   Shelly.call(
     "Switch.Set",
-     { id:index, on:turnOn })
+     { id:index, on:turnOn });
 }
 
 function turnOff() {
@@ -130,4 +138,5 @@ function turnOffAndDie(){
 MQTT.subscribe(mqttTopic, processMqtt);
 MQTT.subscribe(mqttTopicBoilerTemp, processMqttBoilerTemp);
 MQTT.subscribe(mqttTopicPufferTemp, processMqttPufferTemp);
+MQTT.subscribe(mqttTopicBatteryOutput , processMqttBatteryOutput);
 Timer.set(300000, true, smartMeterHealthCheck); //five minutes
