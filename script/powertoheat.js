@@ -69,6 +69,9 @@ function loop() {
 }
 
 function processMqtt(topic, message, callbackarg) {
+  if(message === null || message === '') {
+    return;
+  }
   let messageObject = JSON.parse(message);
   print("received power from smartmeter. Current power: ", messageObject.SML.Power_curr);
   smartMeterValueReceived = true;
@@ -90,21 +93,28 @@ function processMqtt(topic, message, callbackarg) {
 }
 
 function processMqttBoilerTemp(topic, message, callbackarg) {
+  if(message === null || message === '') {
+    return;
+  }
   print("received boiler temp: ", message);
   tempBoiler = JSON.parse(message);
 }
 
 function processMqttPufferTemp(topic, message, callbackarg) {
+  if(message === null || message === '') {
+    return;
+  }
   print("received puffer temp: ", message);
   tempPuffer = JSON.parse(message);
 }
 
 function processMqttBatteryOutput(topic, message, callbackarg) {
+  if(message === null || message === '') {
+    return;
+  }
   print("received battery output: ", message);
   batteryOutput = JSON.parse(message);
 }
-
-
 
 function switchPhase(index, turnOn){
   Shelly.call(
