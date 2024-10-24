@@ -6,8 +6,9 @@ let batterySoC = 0.0;
 let heatingCounter = 0;
 let currentSwitchesOn = 0;
 let smartMeterValueReceived = false;
+let batteryTargetSoc = 100.0;
 
-let mqttTopic = "tele/smartmeter/SENSOR";
+let mqttTopic = "sensor/power_curr";
 let mqttTopicBoilerTemp = "sensor/boilertemperatur_oben";
 let mqttTopicPufferTemp = "sensor/puffertemperatur_oben";
 let mqttTopicBatteryOutput = "sensor/battery_output_power";
@@ -45,7 +46,7 @@ function maxTempReached() {
 }
 
 function minTempReached() {
-  if(tempPuffer < 63 && tempBoiler <= 68) {
+  if(tempPuffer <= 69 && tempBoiler <= 69) {
     print("min temp reached");
     return true;
   }
@@ -71,21 +72,23 @@ function loop() {
 }
 
 function processMqtt(topic, message, callbackarg) {
-  if(message === null || message === '') {
+  if(message === null || message === '' || message === 'unavailable') {
     return;
   }
-  let messageObject = JSON.parse(message);
-  print("received power from smartmeter. Current power: ", messageObject.SML.Power_curr);
+  
+  print("received current power: ", message);
+  currentPower = JSON.parse(message);
+  
+  print("received power from smartmeter. Current power: ", currentPower );
   smartMeterValueReceived = true;
 
-
-  if(messageObject.SML.Power_curr <= -1250 || (batteryOutput <= -1250 && batterySoC >= 98.0)) {
+  if(currentPower  <= -1250 || (batteryOutput <= -1250 && batterySoC >= batteryTargetSoc)) {
     if(heatingCounter < 3 && currentSwitchesOn !== 3) {
       heatingCounter++;
     }
   }
 
-  if(messageObject.SML.Power_curr >= 50 || batteryOutput >= 50) {
+  if(currentPower  >= 50 || batteryOutput >= 50) {
     if(heatingCounter > -3) {
       heatingCounter--;
     }
@@ -141,6 +144,32 @@ function turnOff() {
   currentSwitchesOn = 0;
 }
 
+
+//function getSwitchesOn() {
+//  let switchesOn = 0;
+//
+//  Shelly.call(
+//    "Switch.getStatus",
+//    { id:0 },
+//    function (result, error_code, error_message, user_data) {
+//      if(result.output) { 
+//        switchesOn++;
+//      }
+//    });
+
+//  Shelly.call(
+//    "Switch.getStatus",
+//    { id:1 },
+//    function (result, error_code, error_message, user_data) {
+//      if(result.output) { 
+//        switchesOn++;
+//      }
+//    });
+
+//  print("current switches on: " + switchesOn);
+//  return switchesOn;
+//}
+
 function smartMeterHealthCheck(userdata){
   if(smartMeterValueReceived) {
     print("smartmeter healthy");
@@ -148,8 +177,11 @@ function smartMeterHealthCheck(userdata){
   } else {
     print("smartmeter unhealthy");
     turnOffAndDie();
-
   }
+//  if(currentSwitchesOn !== getSwitchesOn()) {
+//    print("currentSwitchesOn !== getSwitchesOn()");
+//    turnOffAndDie();
+//  }
 }
 
 function turnOffAndDie(){
