@@ -71,8 +71,26 @@ function loop() {
   }
 }
 
+// Home Assistant may publish 'unavailable'/'unknown'; mJS has no try/catch, so validate before JSON.parse
+function isNumeric(message) {
+  if(message === null || message === undefined || message === '') {
+    return false;
+  }
+  let s = "" + message;
+  let digits = false;
+  for(let i = 0; i < s.length; i++) {
+    let c = s.charAt(i);
+    if(c >= '0' && c <= '9') {
+      digits = true;
+    } else if(c !== '-' && c !== '.' && c !== '+' && c !== 'e' && c !== 'E' && c !== ' ') {
+      return false;
+    }
+  }
+  return digits;
+}
+
 function processMqtt(topic, message, callbackarg) {
-  if(message === null || message === '' || message === 'unavailable') {
+  if(!isNumeric(message)) {
     return;
   }
   
@@ -99,7 +117,7 @@ function processMqtt(topic, message, callbackarg) {
 }
 
 function processMqttBoilerTemp(topic, message, callbackarg) {
-  if(message === null || message === '') {
+  if(!isNumeric(message)) {
     return;
   }
   print("received boiler temp: ", message);
@@ -107,7 +125,7 @@ function processMqttBoilerTemp(topic, message, callbackarg) {
 }
 
 function processMqttPufferTemp(topic, message, callbackarg) {
-  if(message === null || message === '') {
+  if(!isNumeric(message)) {
     return;
   }
   print("received puffer temp: ", message);
@@ -115,7 +133,7 @@ function processMqttPufferTemp(topic, message, callbackarg) {
 }
 
 function processMqttBatteryOutput(topic, message, callbackarg) {
-  if(message === null || message === '') {
+  if(!isNumeric(message)) {
     return;
   }
   print("received battery output: ", message);
@@ -123,7 +141,7 @@ function processMqttBatteryOutput(topic, message, callbackarg) {
 }
 
 function processMqttBatterySoC(topic, message, callbackarg) {
-  if(message === null || message === '') {
+  if(!isNumeric(message)) {
     return;
   }
   print("received battery soc: ", message);
