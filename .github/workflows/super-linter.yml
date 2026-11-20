@@ -26,4 +26,6 @@ jobs:
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: "main"
+          # Shelly scripts run on mJS (no const, Shelly/MQTT/Timer globals, house style uses semicolons)
+          VALIDATE_JAVASCRIPT_STANDARD: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
