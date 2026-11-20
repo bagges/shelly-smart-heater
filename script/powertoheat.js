@@ -6,7 +6,7 @@ let batterySoC = 0.0;
 let heatingCounter = 0;
 let currentSwitchesOn = 0;
 let smartMeterValueReceived = false;
-let batteryTargetSoc = 100.0;
+let batteryTargetSoc = 70.0;
 
 let mqttTopic = "sensor/power_curr";
 let mqttTopicBoilerTemp = "sensor/boilertemperatur_oben";
